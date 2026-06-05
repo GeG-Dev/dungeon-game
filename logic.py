@@ -9,35 +9,59 @@ class Player:
         self.__playerStats = {"name":name,"hp":hp , "lvl":lvl,"inventary":inventary}
         
         self.speed = playerSpeed
-        self.playerX = 0
-        self.playerY = 0
+        self.playerX = config.TILE_SIZE + (config.TILE_SIZE // 2)
+        self.playerY = config.TILE_SIZE + (config.TILE_SIZE // 2)
+        self.angle = 0
         
-    def getName(self):
-        return self.__playerStats["name"]
-    def getLvl(self):
-        return self.__playerStats["lvl"]
-    def getHp(self):
-        return self.__playerStats["hp"]
-    def getInventary(self):
-        return self.__playerStats["inventary"]
-    def getSpeed(self):
-        return self.speed
-    def setSpeed(self ,speed):
-        self.speed = speed
+    def getName(self):return self.__playerStats["name"]
+    def getLvl(self):return self.__playerStats["lvl"]
+    def getHp(self):return self.__playerStats["hp"]
+    def getInventary(self): return self.__playerStats["inventary"]
+    def getSpeed(self):return self.speed
+    def getAngle(self): return self.angle
+    def setSpeed(self ,speed):self.speed = speed
+    def checkColision(self , newX , newY):
+        offset = config.PLAYER_SIZE // 2
+        
+        pointForCheck = [
+            (newX - offset , newY - offset), # left / up
+            (newX - offset , newY + offset), # left / down
+            (newX + offset , newY - offset), #right / up
+            (newX + offset , newY + offset) #right / down
+        ]
+        
+        for cx , cy in pointForCheck:
+            tileX = int(cx // config.TILE_SIZE)
+            tileY = int(cy // config.TILE_SIZE)
+            
+            if tileX < 0 or tileX >= config.MINI_MAP_SIZE_X or tileY < 0 or tileY >= config.MINI_MAP_SIZE_Y:
+                return False
+            if map.getMapXY(tileX , tileY) == 1:
+                return False
+        return True
+    
     def moveRight(self):
-        if self.playerX > -(config.TILE_SIZE * config.MINI_MAP_SIZE_X - config.screenW):
-            self.playerX -= self.speed 
+        newX = self.playerX + self.speed
+        if self.checkColision(newX  , self.playerY):
+            self.playerX = newX
+            self.angle = 90 
     def moveLeft(self):
-        if self.playerX < 0:
-            self.playerX += self.speed 
+        newX = self.playerX - self.speed 
+        if self.checkColision(newX  , self.playerY):
+            self.playerX = newX 
+            self.angle = 270 
     def moveForward(self):
-        if self.playerY < 0:
-            self.playerY += self.speed 
+        newY = self.playerY - self.speed 
+        if self.checkColision(self.playerX ,newY):
+            self.playerY = newY
+            self.angle = 180 
     def moveBackward(self):
-        if self.playerY > -(config.TILE_SIZE * config.MINI_MAP_SIZE_Y - config.screenH):
-            self.playerY -= self.speed
-    def getXY(self):
-        return [self.playerX , self.playerY]
+        newY = self.playerY + self.speed
+        if self.checkColision(self.playerX , self.playerY):
+            self.playerY = newY
+            self.angle = 0 
+    
+    def getXY(self):return [self.playerX , self.playerY]
     
     
     
