@@ -15,6 +15,7 @@ font = pygame.font.SysFont("Arial" , 22)
 FLOOR_IMG = pygame.transform.scale(pygame.image.load("pictures/woodFloor.jpg") , (config.TILE_SIZE , config.TILE_SIZE))
 WALL_IMG = pygame.transform.scale(pygame.image.load("pictures/woodWall.png") , (config.TILE_SIZE , config.TILE_SIZE))
 DOOR_IMG = pygame.transform.scale(pygame.image.load("pictures/door.png") , (config.TILE_SIZE , config.TILE_SIZE))
+THORNS_IMG = pygame.transform.scale(pygame.image.load("pictures/thorns.png") , (config.TILE_SIZE , config.TILE_SIZE))
 GHOST_PNG = pygame.transform.scale(pygame.image.load("pictures/ghost.png") , (config.PLAYER_SIZE , config.PLAYER_SIZE))
 HEART_IMG = pygame.transform.scale(pygame.image.load("pictures/heart.png") , (config.PLAYER_SIZE // 1.5 , config.PLAYER_SIZE // 1.5))
 # HEART_IMG = pygame.transform.scale(pygame.image.load("pictures/heart.png") , (config.TILE_SIZE // 2 , config.TILE_SIZE // 2))
@@ -114,7 +115,7 @@ def settingsMenu():
 
 def game():
     global gameMenu , volume
-    clock.tick(60)
+    tmr = clock.tick(60) / 1000.0
     screen.fill((0,0,0))
     playerPos = logic.player.getXY()
     for event in pygame.event.get():
@@ -161,6 +162,9 @@ def game():
         logic.player.moveForward()
     if keys[pygame.K_s]:
         logic.player.moveBackward()
+    logic.player.updateTimer(tmr)
+    logic.player.checkDamage()
+    logic.player.checkLevelChange()
         
     camPosX = config.screenW // 2 - playerPos[0]
     camPosY = config.screenH  // 2- playerPos[1]
@@ -171,12 +175,16 @@ def game():
             yTilePos =  camPosY + y * config.TILE_SIZE
             coordinate = logic.map.getMapXY(x , y)
             screen.blit(FLOOR_IMG , (xTilePos ,yTilePos))
-            if coordinate == 1:
+            if coordinate == config.WALL:
                 screen.blit(WALL_IMG , (xTilePos ,yTilePos))
-            if coordinate == 3:
+            if coordinate == config.PORTAL:
                 screen.blit(DOOR_IMG , (xTilePos , yTilePos))
+            if coordinate == config.THORNS:
+                screen.blit(THORNS_IMG , (xTilePos , yTilePos))
 
     playerImg = pygame.transform.rotate(GHOST_PNG , logic.player.getAngle())
+    if logic.player.isInvisible():playerImg.set_alpha(120)
+    else:playerImg.set_alpha(255)
     imgRect = playerImg.get_rect()
     imgRect.center = (config.screenW // 2 , config.screenH // 2)
     screen.blit(playerImg , imgRect)

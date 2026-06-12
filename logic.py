@@ -16,6 +16,7 @@ class Player:
         self.playerY = config.TILE_SIZE + (config.TILE_SIZE // 2)
         self.angle = 0
         self.viewSize = viewSize
+        self.invisible = 0
         
     def getName(self):return self.__playerStats["name"]
     def getLvl(self):return self.__playerStats["lvl"]
@@ -24,7 +25,9 @@ class Player:
     def getSpeed(self):return self.speed
     def getAngle(self): return self.angle
     def setSpeed(self ,speed):self.speed = speed
+    def isInvisible(self): return self.invisible > 0
     def checkColision(self , newX , newY):
+        
         offset = config.PLAYER_SIZE // 2
         
         pointForCheck = [
@@ -39,30 +42,48 @@ class Player:
             tileY = int(cy // config.TILE_SIZE)
             
             if tileX < 0 or tileX >= config.MINI_MAP_SIZE_X or tileY < 0 or tileY >= config.MINI_MAP_SIZE_Y:
-                return False
-            if map.getMapXY(tileX , tileY) == 1:
-                return False
-        return True
+                return 1
+            if map.getMapXY(tileX , tileY) == config.WALL:
+                return 1
+            if map.getMapXY(tileX , tileY) == config.THORNS:
+                return 2
+            if map.getMapXY(tileX , tileY) == config.PORTAL:
+                return config.PORTAL
+        return 0
     
-    
+    def updateTimer(self , tmr):
+        if self.invisible > 0: self.invisible -= tmr
+    def checkDamage(self):
+        if self.isInvisible(): return
+        if self.checkColision(self.playerX , self.playerY) == 2:
+            self.__playerStats["hp"] = self.__playerStats["hp"] - 1
+            self.playerX = config.TILE_SIZE + (config.TILE_SIZE // 2)
+            self.playerY = config.TILE_SIZE + (config.TILE_SIZE // 2)
+            self.invisible = 5
+    def checkLevelChange(self):
+        if self.checkColision(self.playerX , self.playerY) == config.PORTAL:
+            self.playerX = config.TILE_SIZE + (config.TILE_SIZE // 2)
+            self.playerY = config.TILE_SIZE + (config.TILE_SIZE // 2)
+            map.generateMap()
+        
     def moveRight(self):
         newX = self.playerX + self.speed
-        if self.checkColision(newX  , self.playerY):
+        if not self.checkColision(newX  , self.playerY) == 1:
             self.playerX = newX
             self.angle = 90 
     def moveLeft(self):
         newX = self.playerX - self.speed 
-        if self.checkColision(newX  , self.playerY):
+        if not  self.checkColision(newX  , self.playerY) == 1:
             self.playerX = newX 
             self.angle = 270 
     def moveForward(self):
         newY = self.playerY - self.speed 
-        if self.checkColision(self.playerX ,newY):
+        if not self.checkColision(self.playerX ,newY) == 1:
             self.playerY = newY
             self.angle = 180 
     def moveBackward(self):
         newY = self.playerY + self.speed
-        if self.checkColision(self.playerX , self.playerY):
+        if not self.checkColision(self.playerX ,newY) == 1:
             self.playerY = newY
             self.angle = 0 
     
@@ -82,20 +103,32 @@ class Map:
         self.__grid = []
     
     def generateMap(self):
-        self.__grid.clear()
-        for y in range(self.mapSizeY):
-            row = []
-            for x in range(self.mapSizeX):
-                if y == 1 and x != 0 and x != self.mapSizeX - 1:
-                    row.append(0)
-                elif y == self.mapSizeY - 2 and x != 0 and x != self.mapSizeX - 1:
-                    row.append(0)
-                elif x == 0 or x == self.mapSizeX - 1 or y == 0 or y == self.mapSizeY - 1:
-                    row.append(1)
-                else:
-                    row.append(0 if random.random() > config.BOX_CHANCE else 3)
+        self.__grid = [[1 for _ in range(self.mapSizeX)] for _ in range(self.mapSizeY)]
+        for y in range(1 , self.mapSizeY , 2):
+            for x in range(1 , self.mapSizeX , 2):
+                self.__grid[y][x] = config.FLOOR
+                directions = []
+                if y > 1 :
+                    directions.append("UP")
+                if x < self.mapSizeX - 1:
+                    directions.append("RIGHT")
                 
-            self.__grid.append(row)
+                if directions:
+                    dir = random.choice(directions)
+                    if dir == "UP":self.__grid[y - 1][x] = config.FLOOR
+                    if dir == "RIGHT":self.__grid[y][x + 1] = config.FLOOR
+        
+        for y in range(1 , self.mapSizeY):
+            self.__grid[y][self.mapSizeX - 1] = config.WALL
+            if y >= self.mapSizeY - 3 and y != self.mapSizeY - 1: 
+                for x in range(1, self.mapSizeX - 1): 
+                    self.__grid[y][x] = config.FLOOR
+        self.__grid[self.mapSizeY - 2][random.randint(1 , self.mapSizeX - 2)] = config.PORTAL
+        for y in range(1 , self.mapSizeY - 1):
+            for x in range(1 , self.mapSizeX - 1):
+                if self.__grid[y][x] == config.WALL:
+                    if random.random() < 0.2: self.__grid[y][x] = config.THORNS
+                
         # print(self.__grid)
     def getMapXY(self , x , y):return self.__grid[y][x]
         

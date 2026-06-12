@@ -1,12 +1,17 @@
 import pygame
 #настройки карты
-MINI_MAP_SIZE_X = 10 #размер карты
-MINI_MAP_SIZE_Y = 10 #размер карты
+MINI_MAP_SIZE_X = 41 #размер карты
+MINI_MAP_SIZE_Y = 41 #размер карты
 TILE_SIZE = 100
 PLAYER_SIZE = 75
-BOX_CHANCE = 0.06
+BOX_CHANCE = 0.3
 SCREEN_STEP = 50
 START_VIEW = 5000
+
+FLOOR = 0
+WALL = 1
+PORTAL = 9
+THORNS = 4
 
 pygame.init()
 
@@ -14,7 +19,7 @@ monitorInfo = pygame.display.Info()
 screenW = monitorInfo.current_w
 screenH = monitorInfo.current_h
 
-PLAYER_SPEED = 4
+PLAYER_SPEED = 7
 VOLUME_STEP = 0.05
 SAVE_FILE_DIR = "save.json"
 
