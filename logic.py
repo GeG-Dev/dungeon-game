@@ -2,16 +2,20 @@ import config
 import json
 import random
 
-player_stats = {"hp":100 , "lvl":0,"inventary":[]}
+player_stats = {"hp":3 , "lvl":0,"inventary":[] , "viewSize":config.START_VIEW}
+
+
 
 class Player:
-    def __init__(self , name ="empty", hp = 100, lvl = 0, inventary = [], playerSpeed = 10):
-        self.__playerStats = {"name":name,"hp":hp , "lvl":lvl,"inventary":inventary}
+    def __init__(self , name ="empty", hp = 3, lvl = 0, inventary = [], playerSpeed = 10 , viewSize = config.START_VIEW):
+        self.__playerStats = {"name":name,"hp":hp , "lvl":lvl,"inventary":inventary,"viewSize":viewSize}
         
+        self.lvl = lvl
         self.speed = playerSpeed
         self.playerX = config.TILE_SIZE + (config.TILE_SIZE // 2)
         self.playerY = config.TILE_SIZE + (config.TILE_SIZE // 2)
         self.angle = 0
+        self.viewSize = viewSize
         
     def getName(self):return self.__playerStats["name"]
     def getLvl(self):return self.__playerStats["lvl"]
@@ -40,6 +44,7 @@ class Player:
                 return False
         return True
     
+    
     def moveRight(self):
         newX = self.playerX + self.speed
         if self.checkColision(newX  , self.playerY):
@@ -62,6 +67,11 @@ class Player:
             self.angle = 0 
     
     def getXY(self):return [self.playerX , self.playerY]
+
+    def getViewSize(self):return self.viewSize
+    def nextLevel(self):
+        self.lvl += 1
+        self.viewSize = (max(self.viewSize , 100))
     
     
     
@@ -76,16 +86,28 @@ class Map:
         for y in range(self.mapSizeY):
             row = []
             for x in range(self.mapSizeX):
-                if x == 0 or x == self.mapSizeX - 1 or y == 0 or y == self.mapSizeY - 1:
+                if y == 1 and x != 0 and x != self.mapSizeX - 1:
+                    row.append(0)
+                elif y == self.mapSizeY - 2 and x != 0 and x != self.mapSizeX - 1:
+                    row.append(0)
+                elif x == 0 or x == self.mapSizeX - 1 or y == 0 or y == self.mapSizeY - 1:
                     row.append(1)
                 else:
-                    row.append(0 if random.random() > config.BOX_CHANCE else 1)
+                    row.append(0 if random.random() > config.BOX_CHANCE else 3)
+                
             self.__grid.append(row)
         # print(self.__grid)
     def getMapXY(self , x , y):return self.__grid[y][x]
         
-    
+def saveData(txt):
+    with open(config.SAVE_FILE_DIR , "w" ) as f:
+        json.dump( txt , f)
+def readData():
+    with open(config.SAVE_FILE_DIR , "r") as f:
+        return json.load(f)
+
+
 map = Map(config.MINI_MAP_SIZE_X , config.MINI_MAP_SIZE_Y)
 map.generateMap()
 
-player = Player("bob",  100, 0, [], config.PLAYER_SPEED)
+player = Player("bob",  3, 0, [], config.PLAYER_SPEED)
