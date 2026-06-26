@@ -27,3 +27,6 @@ class button:
             if self.rect.collidepoint(mousePos):
                 return True
         return False
+    
+# xSize = 41//2
+# for i in range(xSize - 2 , xSize + 3): print(i)

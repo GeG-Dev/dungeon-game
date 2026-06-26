@@ -2,7 +2,7 @@ import config
 import json
 import random
 
-player_stats = {"hp":3 , "lvl":0,"inventary":[] , "viewSize":config.START_VIEW}
+player_stats = {"hp":30 , "lvl":0,"inventary":[] , "viewSize":config.START_VIEW}
 
 
 
@@ -10,10 +10,12 @@ class Player:
     def __init__(self , name ="empty", hp = 3, lvl = 0, inventary = [], playerSpeed = 10 , viewSize = config.START_VIEW):
         self.__playerStats = {"name":name,"hp":hp , "lvl":lvl,"inventary":inventary,"viewSize":viewSize}
         
-        self.lvl = lvl
+
         self.speed = playerSpeed
-        self.playerX = config.TILE_SIZE + (config.TILE_SIZE // 2)
-        self.playerY = config.TILE_SIZE + (config.TILE_SIZE // 2)
+        # self.playerX = config.TILE_SIZE + (config.TILE_SIZE // 2)
+        # self.playerY = config.TILE_SIZE + (config.TILE_SIZE // 2)
+        self.playerY = config.MINI_MAP_SIZE_Y // 2 * config.TILE_SIZE
+        self.playerX = config.MINI_MAP_SIZE_X // 2 * config.TILE_SIZE
         self.angle = 0
         self.viewSize = viewSize
         self.invisible = 0
@@ -26,6 +28,7 @@ class Player:
     def getAngle(self): return self.angle
     def setSpeed(self ,speed):self.speed = speed
     def isInvisible(self): return self.invisible > 0
+    def setLvl(self, lvl): self.__playerStats["lvl"] = lvl
     def checkColision(self , newX , newY):
         
         offset = config.PLAYER_SIZE // 2
@@ -47,6 +50,8 @@ class Player:
                 return 1
             if map.getMapXY(tileX , tileY) == config.THORNS:
                 return 2
+            if map.getMapXY(tileX , tileY) == config.TIMERS_THORNS:
+                return 3
             if map.getMapXY(tileX , tileY) == config.PORTAL:
                 return config.PORTAL
         return 0
@@ -57,15 +62,29 @@ class Player:
         if self.isInvisible(): return
         if self.checkColision(self.playerX , self.playerY) == 2:
             self.__playerStats["hp"] = self.__playerStats["hp"] - 1
-            self.playerX = config.TILE_SIZE + (config.TILE_SIZE // 2)
-            self.playerY = config.TILE_SIZE + (config.TILE_SIZE // 2)
+            # if config.IS_RETURN_HOME:
+            #     self.playerY = config.MINI_MAP_SIZE_Y // 2 * config.TILE_SIZE
+            #     self.playerX = config.MINI_MAP_SIZE_X // 2 * config.TILE_SIZE
             self.invisible = 5
+            return True
+        return False
+    def checkDamageTmr(self):
+        if self.isInvisible(): return
+        if self.checkColision(self.playerX , self.playerY) == 3:
+            self.__playerStats["hp"] = self.__playerStats["hp"] - 1
+            # if config.IS_RETURN_HOME:
+            #     self.playerY = config.MINI_MAP_SIZE_Y // 2 * config.TILE_SIZE
+            #     self.playerX = config.MINI_MAP_SIZE_X // 2 * config.TILE_SIZE
+            self.invisible = 5
+            return True
+        return False
     def checkLevelChange(self):
         if self.checkColision(self.playerX , self.playerY) == config.PORTAL:
-            self.playerX = config.TILE_SIZE + (config.TILE_SIZE // 2)
-            self.playerY = config.TILE_SIZE + (config.TILE_SIZE // 2)
             map.generateMap()
-        
+            self.playerY = config.MINI_MAP_SIZE_Y // 2 * config.TILE_SIZE
+            self.playerX = config.MINI_MAP_SIZE_X // 2 * config.TILE_SIZE
+            return True
+        return False        
     def moveRight(self):
         newX = self.playerX + self.speed
         if not self.checkColision(newX  , self.playerY) == 1:
@@ -101,7 +120,16 @@ class Map:
         self.mapSizeX = size_x
         self.mapSizeY = size_y
         self.__grid = []
-    
+        self.boolInvisible = False
+        self.invisible = 0
+    def updateTimer(self , tmr):
+        if self.invisible > 0: self.invisible -= tmr
+        else:
+            self.invisible = (random.randint(5,30) / 10)
+            self.boolInvisible = not self.boolInvisible
+    def isShow(self ):return self.boolInvisible
+
+            
     def generateMap(self):
         self.__grid = [[1 for _ in range(self.mapSizeX)] for _ in range(self.mapSizeY)]
         for y in range(1 , self.mapSizeY , 2):
@@ -124,11 +152,24 @@ class Map:
                 for x in range(1, self.mapSizeX - 1): 
                     self.__grid[y][x] = config.FLOOR
         self.__grid[self.mapSizeY - 2][random.randint(1 , self.mapSizeX - 2)] = config.PORTAL
+        self.__grid[1][random.randint(1 , self.mapSizeX - 2)] = config.PORTAL
         for y in range(1 , self.mapSizeY - 1):
             for x in range(1 , self.mapSizeX - 1):
                 if self.__grid[y][x] == config.WALL:
-                    if random.random() < 0.2: self.__grid[y][x] = config.THORNS
+                    if random.random() < config.thornsChance: self.__grid[y][x] = config.THORNS
+                    elif random.random() < config.timerThornsChance:self.__grid[y][x] = config.TIMERS_THORNS
+        startY = config.MINI_MAP_SIZE_Y // 2
+        startX = config.MINI_MAP_SIZE_X // 2
+        for y in range(startY - 2 , startY + 3):
+            for x in range(startX - 2 , startX + 3):
+                self.__grid[y][x] = config.FLOOR
+                if y == startY:
+                    if x == startX - 1:
+                        self.__grid[y][x] = config.FLOOR_PORTAL_DOWN
+                    if x == startX + 1:
+                        self.__grid[y][x] = config.FLOOR_PORTAL_UP
                 
+
         # print(self.__grid)
     def getMapXY(self , x , y):return self.__grid[y][x]
         

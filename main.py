@@ -12,7 +12,12 @@ screen = pygame.display.set_mode((config.screenW , config.screenH ), pygame.NOFR
 viewPlace = pygame.Surface((config.screenW , config.screenH) , pygame.SRCALPHA)
 font = pygame.font.SysFont("Arial" , 22)
 
+VIN_SCREEN = pygame.transform.scale(pygame.image.load("pictures/VIN.png") , (config.screenW , config.screenH))
+NEXT_LEVEL = pygame.transform.scale(pygame.image.load("pictures/nextLevelPage.png") , (config.screenW , config.screenH))
+GAME_OVER = pygame.transform.scale(pygame.image.load("pictures/gameOver.png") , (config.screenW , config.screenH))
 FLOOR_IMG = pygame.transform.scale(pygame.image.load("pictures/woodFloor.jpg") , (config.TILE_SIZE , config.TILE_SIZE))
+FLOOR_DOWN = pygame.transform.scale(pygame.image.load("pictures/woodFloorArDown.png") , (config.TILE_SIZE , config.TILE_SIZE))
+FLOOR_UP = pygame.transform.scale(pygame.image.load("pictures/woodFloorArUp.png") , (config.TILE_SIZE , config.TILE_SIZE))
 WALL_IMG = pygame.transform.scale(pygame.image.load("pictures/woodWall.png") , (config.TILE_SIZE , config.TILE_SIZE))
 DOOR_IMG = pygame.transform.scale(pygame.image.load("pictures/door.png") , (config.TILE_SIZE , config.TILE_SIZE))
 THORNS_IMG = pygame.transform.scale(pygame.image.load("pictures/thorns.png") , (config.TILE_SIZE , config.TILE_SIZE))
@@ -39,10 +44,16 @@ startBtn = btn.button(config.screenW // 2 - 100 , config.screenH // 2 , btnX, bt
 settingsBtn = btn.button(config.screenW // 2 - 100  , config.screenH // 2 + btnY*1.5 , btnX , btnY , (150,100,0) , (250,200,0) , "settings")
 exitBtn = btn.button(config.screenW // 2 - 100  , config.screenH // 2 + btnY*3 , btnX , btnY , (150,100,0) , (250,200,0) , "exit")
 
+go = btn.button(config.screenW // 2  - 100 , config.screenH // 2 + btnY*6 , btnX , btnY , (150,100,0) , (250,200,0) , "GO")
+
+mainMenuGO = btn.button(config.screenW // 2 - 500   , config.screenH // 2 + btnY * 2 , btnX , btnY , (150,100,0) , (250,200,0) , "Main menu")
+repeat = btn.button(config.screenW // 2 + 400   , config.screenH // 2 + btnY * 2 , btnX , btnY , (150,100,0) , (250,200,0) , "repeat")
 
 resumeBtn = btn.button(config.screenW // 2 - 100 , config.screenH // 2  + btnY*1.5, btnX, btnY  , (150,100,0) , (250,200,0) , "resume")
 exitMainMenuBtn = btn.button(config.screenW // 2 - 100  , config.screenH // 2 + btnY*3 , btnX , btnY , (150,100,0) , (250,200,0) , "exit")
 gameMenu = 1
+fade_pos = 0 
+fadeVal = 0
 
 minus = btn.button(config.screenW // 2 - 300 , config.screenH // 2 , btnX, btnY , (150,100,0) , (250,200,0) , "-")
 plus = btn.button(config.screenW // 2 + 100 , config.screenH // 2 , btnX, btnY , (150,100,0) , (250,200,0) , "+")
@@ -114,7 +125,8 @@ def settingsMenu():
 
 
 def game():
-    global gameMenu , volume
+    global gameMenu , volume , fade_pos,fadeVal
+    mousePos = pygame.mouse.get_pos()
     tmr = clock.tick(60) / 1000.0
     screen.fill((0,0,0))
     playerPos = logic.player.getXY()
@@ -122,6 +134,7 @@ def game():
         if event.type == pygame.QUIT:gameMenu = 0
     keys = pygame.key.get_pressed()
     if keys[pygame.K_ESCAPE]:
+    
         run = True
         while run:
             mousePos = pygame.mouse.get_pos()
@@ -152,19 +165,70 @@ def game():
             volume = min(max(0 , volume) , 1)
                 
             pygame.display.flip()
-    if keys[pygame.K_SPACE]:
-        logic.map.generateMap()
-    if keys[pygame.K_d]:
-        logic.player.moveRight()
-    if keys[pygame.K_a]:
-        logic.player.moveLeft()
-    if keys[pygame.K_w]:
-        logic.player.moveForward()
-    if keys[pygame.K_s]:
-        logic.player.moveBackward()
+    if fade_pos == 0:
+        if keys[pygame.K_SPACE]:
+            logic.map.generateMap()
+        if keys[pygame.K_d]:
+            logic.player.moveRight()
+        if keys[pygame.K_a]:
+            logic.player.moveLeft()
+        if keys[pygame.K_w]:
+            logic.player.moveForward()
+        if keys[pygame.K_s]:
+            logic.player.moveBackward()
     logic.player.updateTimer(tmr)
-    logic.player.checkDamage()
-    logic.player.checkLevelChange()
+    logic.map.updateTimer(tmr)
+    
+    if fade_pos == 0:
+        got_dmg = logic.player.checkDamage()
+        player_tile_x = int(playerPos[0] // config.TILE_SIZE)
+        player_tile_y = int(playerPos[1] // config.TILE_SIZE)
+        if 0 <= player_tile_x < config.MINI_MAP_SIZE_X and 0 <= player_tile_y < config.MINI_MAP_SIZE_Y:
+            if logic.map.getMapXY(player_tile_x, player_tile_y) == config.TIMERS_THORNS and logic.map.isShow():
+                if logic.player.checkDamageTmr():
+                    got_dmg = True
+        if got_dmg:fade_pos = 1
+    
+    if logic.player.checkLevelChange():
+        run = True
+        logic.player.setLvl(logic.player.getLvl()+ 1)
+        text_surface = font.render(f"LVL:{logic.player.getLvl()}/{config.MAX_LEVEL}", True, (255, 255, 255))
+        config.thornsChance = config.thornsChance + config.THORNS_CHANGE_STEP
+        config.timerThornsChance = config.timerThornsChance + config.THORNS_CHANGE_STEP
+        if logic.player.getLvl() > config.MAX_LEVEL:
+            while run:
+                mousePos = pygame.mouse.get_pos()
+                screen.blit(VIN_SCREEN , (0 ,0))
+                mainMenuGO.checkHover(mousePos)
+                mainMenuGO.draw(screen)
+                repeat.checkHover(mousePos)
+                repeat.draw(screen)
+                for event in pygame.event.get():
+                    if event.type == pygame.QUIT:
+                        run = False
+                        gameMenu = False
+                    if mainMenuGO.click(event , mousePos): 
+                        logic.player = logic.Player("bob",  3, 0, [], config.PLAYER_SPEED)
+                        gameMenu = 1
+                    if repeat.click(event , mousePos):
+                        logic.player = logic.Player("bob",  3, 0, [], config.PLAYER_SPEED)
+                        logic.map.generateMap()
+                        gameMenu = 2
+                pygame.display.flip()
+            
+        while run:
+            mousePos = pygame.mouse.get_pos()
+            screen.blit(NEXT_LEVEL , (0 ,0))
+            go.checkHover(mousePos)
+            go.draw(screen)
+            screen.blit(text_surface, (config.screenW // 2  - 30 , config.screenH // 2 + btnY*8))
+            for event in pygame.event.get():
+                if event.type == pygame.QUIT:
+                    run = False
+                    gameMenu = False
+                if go.click(event , mousePos): run = False
+            
+            pygame.display.flip()
         
     camPosX = config.screenW // 2 - playerPos[0]
     camPosY = config.screenH  // 2- playerPos[1]
@@ -181,6 +245,20 @@ def game():
                 screen.blit(DOOR_IMG , (xTilePos , yTilePos))
             if coordinate == config.THORNS:
                 screen.blit(THORNS_IMG , (xTilePos , yTilePos))
+            if coordinate == config.FLOOR_PORTAL_DOWN:
+                screen.blit(FLOOR_DOWN , (xTilePos , yTilePos))
+            if coordinate == config.FLOOR_PORTAL_UP:
+                screen.blit(FLOOR_UP , (xTilePos , yTilePos))
+            if coordinate == config.TIMERS_THORNS:
+                if logic.map.isShow():
+                    THORNS_IMG.set_alpha(255)
+                    screen.blit(THORNS_IMG , (xTilePos , yTilePos))
+                    
+                    # logic.player.checkDamageTmr()
+                else:
+                    THORNS_IMG.set_alpha(120)
+                    screen.blit(THORNS_IMG , (xTilePos , yTilePos))
+                    THORNS_IMG.set_alpha(255)
 
     playerImg = pygame.transform.rotate(GHOST_PNG , logic.player.getAngle())
     if logic.player.isInvisible():playerImg.set_alpha(120)
@@ -197,7 +275,56 @@ def game():
     #рисую хп
     for i in range(logic.player.getHp()):
         screen.blit(HEART_IMG , (5 + i * config.TILE_SIZE // 2 , 5))
+            
     
+    if fade_pos > 0:
+        fade_speed = 510
+        if fade_pos == 1:
+            fadeVal += fade_speed * tmr
+            
+            if fadeVal >= 255: 
+                fadeVal = 255
+                logic.player.playerY = config.MINI_MAP_SIZE_Y // 2 * config.TILE_SIZE
+                logic.player.playerX = config.MINI_MAP_SIZE_X // 2 * config.TILE_SIZE
+                if logic.player.getHp() < 0:gameMenu = 4
+                fade_pos = 2
+        
+        elif fade_pos == 2:
+            fadeVal -= fade_speed * tmr
+            
+            if fadeVal <= 0: 
+                fadeVal = 0
+                fade_pos = 0
+        
+    fade_surface = pygame.Surface((config.screenW, config.screenH))
+    fade_surface.fill((0, 0, 0))
+    fade_surface.set_alpha(int(fadeVal))
+    screen.blit(fade_surface, (0, 0))
+    
+    pygame.display.flip()
+
+def gameOver():
+    global gameMenu
+    screen.blit(GAME_OVER , (0 , 0))
+    mainMenuGO.checkHover(mousePos)
+    mainMenuGO.draw(screen)
+    repeat.checkHover(mousePos)
+    repeat.draw(screen)
+    logic.player.setLvl(0)
+    config.thornsChance = config.STARTED_THORNS_CHANCE
+    config.timerThornsChance = config.STARTED_TIMER_THORNS_CHANCE
+    for event in pygame.event.get():
+        if event.type == pygame.QUIT:
+            gameMenu = False
+            return
+        if mainMenuGO.click(event , mousePos): 
+            logic.player = logic.Player("bob",  3, 0, [], config.PLAYER_SPEED)
+            gameMenu = 1
+        if repeat.click(event , mousePos):
+            logic.player = logic.Player("bob",  3, 0, [], config.PLAYER_SPEED)
+            logic.map.generateMap()
+            gameMenu = 2
+
     pygame.display.flip()
 
 while gameMenu:
@@ -210,6 +337,8 @@ while gameMenu:
             game()
         case 3:
             settingsMenu()
+        case 4:
+            gameOver()
     
     data = {logic.player.getName():{"hp":logic.player.getHp(),"lvl":logic.player.getLvl(),"inventory":logic.player.getInventary(),"volume":volume,"viewSize":logic.player.getViewSize()}}
     logic.saveData(data)
